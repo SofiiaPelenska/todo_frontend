@@ -12,6 +12,7 @@ export const LoginPage = ({
   const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 6) {
@@ -24,31 +25,33 @@ export const LoginPage = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  e.preventDefault();
+  setError('');
+  setIsSubmitting(true);
 
-    if (!validatePassword(password)) {
-      return;
+  if (!validatePassword(password)) {
+    setIsSubmitting(false);
+    return;
+  }
+
+  try {
+    if (isRegister) {
+      await register(email, password);
+      const { token } = await login(email, password);
+      localStorage.setItem('token', token);
+      onLogin(token);
+    } else {
+      const { token } = await login(email, password);
+      localStorage.setItem('token', token);
+      onLogin(token);
     }
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-    try {
-      if (isRegister) {
-        await register(email, password);
-
-        const { token } = await login(email, password);
-
-        localStorage.setItem('token', token);
-        onLogin(token);
-      } else {
-        const { token } = await login(email, password);
-
-        localStorage.setItem('token', token);
-        onLogin(token);
-      }
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
 
   return (
     <section
@@ -111,6 +114,7 @@ export const LoginPage = ({
                   }}
                   onClick={() => setShowPassword(prev => !prev)}
                   tabIndex={-1}
+                  disabled={isSubmitting}
                 >
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
@@ -123,6 +127,7 @@ export const LoginPage = ({
                   type="submit"
                   className="button is-primary"
                   style={{ minWidth: '120px' }}
+                  disabled={isSubmitting}
                 >
                   {isRegister ? 'Register' : 'Login'}
                 </button>
@@ -136,6 +141,7 @@ export const LoginPage = ({
                     setIsRegister(p => !p);
                     setError('');
                   }}
+                  disabled={isSubmitting}
                 >
                   {isRegister ? 'Switch to Login' : 'Switch to Register'}
                 </button>

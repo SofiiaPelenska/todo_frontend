@@ -77,35 +77,55 @@ export const TodoPage: React.FC<{ token: string }> = ({ token }) => {
   };
 
   const handleCreateTodo = async (title: string) => {
-    if (!title.trim()) {
-      handleError(Errors.EMPTY);
+  if (!title.trim()) {
+    handleError(Errors.EMPTY);
+    return;
+  }
 
-      return;
-    }
+  setIsLoading(true);
 
-    setIsLoading(true);
-
-    const newTodo = {
-      id: 0,
-      title: title.trim(),
-      completed: false,
-    };
-
-    setTempTodo(newTodo);
-
-    try {
-      const todo = await addTodo(newTodo);
-
-      setTodos(currentTodos => [...currentTodos, todo]);
-      setNewTodoTitle('');
-    } catch {
-      handleError(Errors.ADD);
-    } finally {
-      setIsLoading(false);
-      setTempTodo(null);
-      shouldFocusCreationForm.current = true;
-    }
+  const newTodo = {
+    id: 0,
+    title: title.trim(),
+    completed: false,
   };
+
+  setTempTodo(newTodo);
+
+  try {
+    const todo = await addTodo(newTodo);
+
+    setTodos(currentTodos => {
+      const updatedTodos = [...currentTodos];
+
+      const shouldInclude = (
+        filterBy === FilterBy.All ||
+        (filterBy === FilterBy.Active && !todo.completed) ||
+        (filterBy === FilterBy.Completed && todo.completed)
+      );
+
+      if (shouldInclude) {
+        updatedTodos.push(todo);
+      }
+
+      return updatedTodos;
+    });
+
+    setStats(prevStats => ({
+      total: prevStats.total + 1,
+      completed: prevStats.completed,
+    }));
+
+    setNewTodoTitle('');
+  } catch {
+    handleError(Errors.ADD);
+  } finally {
+    setIsLoading(false);
+    setTempTodo(null);
+    shouldFocusCreationForm.current = true;
+  }
+};
+
 
   const handleDeleteTodo = (todoId: number) =>
     withLoading(todoId, () => removeTodoById(todoId), Errors.DELETE, {
@@ -136,7 +156,7 @@ export const TodoPage: React.FC<{ token: string }> = ({ token }) => {
 
   useEffect(() => {
     refreshTodos();
-  }, [filterBy, token]);
+  }, [filterBy, stats.completed]);
 
   useEffect(() => {
     shouldFocusCreationForm.current = false;
@@ -165,7 +185,6 @@ export const TodoPage: React.FC<{ token: string }> = ({ token }) => {
           handleUpdateTodoTitle={handleUpdateTodoTitle}
         />
 
-        {stats.total > 0 && (
           <Footer
             completedTodos={todos.filter(todo => todo.completed)}
             amountOfActiveTodo={amountOfActiveTodo}
@@ -173,7 +192,6 @@ export const TodoPage: React.FC<{ token: string }> = ({ token }) => {
             setFilterBy={setFilterBy}
             deleteTodo={handleDeleteTodo}
           />
-        )}
       </div>
 
       <ErrorModal
